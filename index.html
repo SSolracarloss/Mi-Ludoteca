@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -2468,6 +2468,9 @@
     <select class="fsel" id="f-mec" onchange="render()">
       <option value="">⚙️ Mecánica</option>
     </select>
+    <select class="fsel" id="f-idioma" onchange="render()">
+      <option value="">🗣 Idioma</option>
+    </select>
     <div class="fautor-wrap" style="position:relative">
       <div class="fsearch" style="padding:4px 10px;gap:5px">
         <span style="color:var(--text-dim);font-size:0.8rem">✍️</span>
@@ -2977,12 +2980,18 @@
       // (called on data load/change; actual AC list built on demand in fAutorInput)
     }
     function buildTagFilters() {
+      const allCats = [...new Set([...CATS, ...GAMES.flatMap(g => g.cats || [])])].sort((a, b) => a.localeCompare(b, 'es'));
       const sc = document.getElementById('f-cat');
-      const sortedCats = [...CATS].sort((a, b) => a.localeCompare(b, 'es'));
-      sc.innerHTML = '<option value="">🏷 Categoría</option>' + sortedCats.map(c => `<option value="${x(c)}">${x(c)}</option>`).join('');
+      sc.innerHTML = '<option value="">🏷 Categoría</option>' + allCats.map(c => `<option value="${x(c)}">${x(c)}</option>`).join('');
+      const allMecs = [...new Set([...MECS, ...GAMES.flatMap(g => g.mecs || [])])].sort((a, b) => a.localeCompare(b, 'es'));
       const sm = document.getElementById('f-mec');
-      const sortedMecs = [...MECS].sort((a, b) => a.localeCompare(b, 'es'));
-      sm.innerHTML = '<option value="">⚙️ Mecánica</option>' + sortedMecs.map(m => `<option value="${x(m)}">${x(m)}</option>`).join('');
+      sm.innerHTML = '<option value="">⚙️ Mecánica</option>' + allMecs.map(m => `<option value="${x(m)}">${x(m)}</option>`).join('');
+      const si = document.getElementById('f-idioma');
+      if (si) {
+        const allIdiomas = [...new Set([...IDIOMAS, ...GAMES.map(g => g.idioma).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'es'));
+        const hasSinEsp = GAMES.some(g => !g.idioma);
+        si.innerHTML = '<option value="">🗣 Idioma</option>' + allIdiomas.map(i => `<option value="${x(i)}">${x(i)}</option>`).join('') + (hasSinEsp ? '<option value="Sin especificar">Sin especificar</option>' : '');
+      }
     }
 
     function matches(g) {
@@ -2992,6 +3001,7 @@
       const fW = document.getElementById('f-weight').value;
       const fC = document.getElementById('f-cat').value;
       const fM = document.getElementById('f-mec').value;
+      const fI = document.getElementById('f-idioma').value;
       const fA = document.getElementById('f-autor').value;
       const fE = document.getElementById('f-editorial').value;
       const fS = document.getElementById('f-search').value.toLowerCase().trim();
@@ -3014,6 +3024,10 @@
       if (fW) { const w = g.weight || 0; if (fW === 'light' && w > 1.5) return false; if (fW === 'medium' && (w <= 1.5 || w > 2.5)) return false; if (fW === 'heavy' && w <= 2.5) return false; }
       if (fC && !(g.cats || []).includes(fC)) return false;
       if (fM && !(g.mecs || []).includes(fM)) return false;
+      if (fI) {
+        const idm = g.idioma || 'Sin especificar';
+        if (idm !== fI) return false;
+      }
       if (fA && !(g.autor || '').toLowerCase().includes(fA.toLowerCase())) return false;
       if (fA && !(g.autor || '').toLowerCase().includes(fA.toLowerCase())) return false;
       if (fE && !(g.editorial || '').toLowerCase().includes(fE.toLowerCase())) return false;
@@ -3027,7 +3041,7 @@
     }
 
     function clearAllFilters() {
-      ['f-players', 'f-time', 'f-year', 'f-weight', 'f-cat', 'f-mec'].forEach(id => {
+      ['f-players', 'f-time', 'f-year', 'f-weight', 'f-cat', 'f-mec', 'f-idioma'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       const fs = document.getElementById('f-search'); if (fs) fs.value = '';
@@ -4495,9 +4509,8 @@
           }]
         },
         options: pieOpts('ch-idioma', (idx) => {
-          // Filtrado manual simple para idioma si existe el selector
-          const val = idmEntries[idx][0];
-          showToast(`Idioma: ${val} (${idmEntries[idx][1]} juegos)`, 'ok');
+          closeStats(); document.getElementById('f-idioma').value = idmEntries[idx][0]; render();
+          showToast(`Filtrando: ${idmEntries[idx][0]}`, 'ok');
         })
       });
 
