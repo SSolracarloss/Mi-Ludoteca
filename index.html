@@ -1220,6 +1220,12 @@
       color: #7dcde8
     }
 
+    .pill.tema {
+      background: rgba(76, 175, 125, 0.09);
+      border-color: rgba(76, 175, 125, 0.32);
+      color: #7fd9a8
+    }
+
     .dm-played {
       display: inline-flex;
       align-items: center;
@@ -2471,6 +2477,9 @@
     <select class="fsel" id="f-mec" onchange="render()">
       <option value="">⚙️ Mecánica</option>
     </select>
+    <select class="fsel" id="f-tema" onchange="render()">
+      <option value="">🎭 Temática</option>
+    </select>
     <select class="fsel" id="f-idioma" onchange="render()">
       <option value="">🗣 Idioma</option>
     </select>
@@ -2685,6 +2694,14 @@
             <div class="multi-sels" id="fi-mecs-wrap"></div>
           </div>
 
+          <div class="fg form-full">
+            <div class="fg-label-row">
+              <label>Temáticas <span style="color:var(--text-dim);font-weight:400">(máx. 2)</span></label>
+              <button type="button" class="manage-link" onclick="openManageTags('tema')">✎ Gestionar lista</button>
+            </div>
+            <div class="multi-sels" id="fi-temas-wrap"></div>
+          </div>
+
           <!-- Imagen -->
           <div class="fg form-full">
             <label>Imagen</label>
@@ -2733,6 +2750,7 @@
         <div class="mtm-tabs">
           <button class="mtm-tab on" id="mtab-cat" onclick="switchMTab('cat')">🏷 Categorías</button>
           <button class="mtm-tab" id="mtab-mec" onclick="switchMTab('mec')">⚙️ Mecánicas</button>
+          <button class="mtm-tab" id="mtab-tema" onclick="switchMTab('tema')">🎭 Temáticas</button>
           <button class="mtm-tab" id="mtab-lugar" onclick="switchMTab('lugar')">🛒 Lugares</button>
           <button class="mtm-tab" id="mtab-idioma" onclick="switchMTab('idioma')">🗣 Idiomas</button>
         </div>
@@ -2750,6 +2768,14 @@
             <input type="text" id="tnew-mec" placeholder="Nueva mecánica…"
               onkeydown="if(event.key==='Enter')addTag('mec')">
             <button class="btn primary sm" onclick="addTag('mec')">＋ Añadir</button>
+          </div>
+        </div>
+        <div class="mtm-pane" id="mpane-tema">
+          <div class="tag-list" id="tlist-tema"></div>
+          <div class="add-tag-row">
+            <input type="text" id="tnew-tema" placeholder="Nueva temática…"
+              onkeydown="if(event.key==='Enter')addTag('tema')">
+            <button class="btn primary sm" onclick="addTag('tema')">＋ Añadir</button>
           </div>
         </div>
         <div class="mtm-pane" id="mpane-lugar">
@@ -3247,6 +3273,8 @@
     function saveTags(k, a) { localStorage.setItem('ludo_' + k, JSON.stringify(a)); }
     let CATS = loadTags('cats', DEFAULT_CATS).sort((a, b) => a.localeCompare(b, 'es'));
     let MECS = loadTags('mecs', DEFAULT_MECS).sort((a, b) => a.localeCompare(b, 'es'));
+    const DEFAULT_TEMAS = ['Piratas', 'Dinosaurios', 'Medieval', 'Animales', 'Fantasía', 'Ciencia ficción', 'Terror', 'Mitología', 'Espacio', 'Egipto antiguo', 'Prehistoria', 'Western'];
+    let TEMAS = loadTags('temas', DEFAULT_TEMAS).sort((a, b) => a.localeCompare(b, 'es'));
     let LISTS = JSON.parse(localStorage.getItem('ludo_lists') || '[]');
     const DEFAULT_LUGARES = ['Wallapop', 'Vinted', 'Philibert', 'Dungeon Marvels', 'Amazon', 'Mathom', 'Zacatrus', 'Jugamos Una', '4 Dados'];
     let LUGARES = loadTags('lugares', DEFAULT_LUGARES).sort((a, b) => a.localeCompare(b, 'es'));
@@ -3321,6 +3349,9 @@
       const allMecs = [...new Set([...MECS, ...GAMES.flatMap(g => g.mecs || [])])].sort((a, b) => a.localeCompare(b, 'es'));
       const sm = document.getElementById('f-mec');
       sm.innerHTML = '<option value="">⚙️ Mecánica</option>' + allMecs.map(m => `<option value="${x(m)}">${x(m)}</option>`).join('');
+      const allTemas = [...new Set([...TEMAS, ...GAMES.flatMap(g => g.temas || [])])].sort((a, b) => a.localeCompare(b, 'es'));
+      const sth = document.getElementById('f-tema');
+      sth.innerHTML = '<option value="">🎭 Temática</option>' + allTemas.map(t => `<option value="${x(t)}">${x(t)}</option>`).join('');
       const si = document.getElementById('f-idioma');
       if (si) {
         const allIdiomas = [...new Set([...IDIOMAS, ...GAMES.map(g => g.idioma).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'es'));
@@ -3336,6 +3367,7 @@
       const fW = document.getElementById('f-weight').value;
       const fC = document.getElementById('f-cat').value;
       const fM = document.getElementById('f-mec').value;
+      const fTh = document.getElementById('f-tema').value;
       const fI = document.getElementById('f-idioma').value;
       const fA = document.getElementById('f-autor').value;
       const fE = document.getElementById('f-editorial').value;
@@ -3359,6 +3391,7 @@
       if (fW) { const w = g.weight || 0; if (fW === 'light' && w > 1.5) return false; if (fW === 'medium' && (w <= 1.5 || w > 2.5)) return false; if (fW === 'heavy' && w <= 2.5) return false; }
       if (fC && !(g.cats || []).includes(fC)) return false;
       if (fM && !(g.mecs || []).includes(fM)) return false;
+      if (fTh && !(g.temas || []).includes(fTh)) return false;
       if (fI) {
         const idm = g.idioma || 'Sin especificar';
         if (idm !== fI) return false;
@@ -3376,7 +3409,7 @@
     }
 
     function clearAllFilters() {
-      ['f-players', 'f-time', 'f-year', 'f-weight', 'f-cat', 'f-mec', 'f-idioma'].forEach(id => {
+      ['f-players', 'f-time', 'f-year', 'f-weight', 'f-cat', 'f-mec', 'f-tema', 'f-idioma'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       const fs = document.getElementById('f-search'); if (fs) fs.value = '';
@@ -3692,13 +3725,14 @@
 
       // TAG BLOCK
       const wrap = document.getElementById('dm-tag-block-wrap');
-      const cats = g.cats || [], mecs = g.mecs || [], autor = g.autor || '', editorial = g.editorial || '';
-      if (autor || editorial || cats.length || mecs.length) {
+      const cats = g.cats || [], mecs = g.mecs || [], temas = g.temas || [], autor = g.autor || '', editorial = g.editorial || '';
+      if (autor || editorial || cats.length || mecs.length || temas.length) {
         let rows = '';
         if (autor) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Autor</span><div class="dm-tag-pills"><span class="pill autor">${x(autor)}</span></div></div>`;
         if (editorial) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Editorial</span><div class="dm-tag-pills"><span class="pill editorial">${x(editorial)}</span></div></div>`;
         if (cats.length) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Categoría</span><div class="dm-tag-pills">${cats.map(c => `<span class="pill cat">${x(c)}</span>`).join('')}</div></div>`;
         if (mecs.length) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Mecánica</span><div class="dm-tag-pills">${mecs.map(m => `<span class="pill mec">${x(m)}</span>`).join('')}</div></div>`;
+        if (temas.length) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Temática</span><div class="dm-tag-pills">${temas.map(t => `<span class="pill tema">${x(t)}</span>`).join('')}</div></div>`;
         const gameLists = (g.lists || []).map(id => LISTS.find(l => l.id === id)).filter(Boolean);
         if (gameLists.length) rows += `<div class="dm-tag-row"><span class="dm-tag-lbl">Listas</span><div class="dm-tag-pills">${gameLists.map(l => `<span class="pill list">📋 ${x(l.name)}</span>`).join('')}</div></div>`;
         wrap.innerHTML = `<div class="dm-tag-block">${rows}</div>`;
@@ -3932,16 +3966,16 @@
       openOv('ov-tags');
     }
     function switchMTab(t) {
-      ['cat', 'mec', 'lugar', 'idioma'].forEach(k => {
+      ['cat', 'mec', 'tema', 'lugar', 'idioma'].forEach(k => {
         const tab = document.getElementById('mtab-' + k);
         const pane = document.getElementById('mpane-' + k);
         if (tab) tab.classList.toggle('on', k === t);
         if (pane) pane.classList.toggle('on', k === t);
       });
-      renderTagList('cat'); renderTagList('mec'); renderTagList('lugar'); renderTagList('idioma');
+      renderTagList('cat'); renderTagList('mec'); renderTagList('tema'); renderTagList('lugar'); renderTagList('idioma');
     }
     function renderTagList(type) {
-      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'lugar' ? LUGARES : IDIOMAS));
+      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'tema' ? TEMAS : (type === 'lugar' ? LUGARES : IDIOMAS)));
       const el = document.getElementById('tlist-' + type);
       if (!el) return;
       if (!arr.length) { el.innerHTML = `<div style="font-size:0.75rem;color:var(--text-dim);padding:8px 0">Ninguna etiqueta aún.</div>`; return; }
@@ -3950,11 +3984,11 @@
     function addTag(type) {
       const inp = document.getElementById('tnew-' + type);
       const val = inp.value.trim(); if (!val) return;
-      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'lugar' ? LUGARES : IDIOMAS));
+      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'tema' ? TEMAS : (type === 'lugar' ? LUGARES : IDIOMAS)));
       if (arr.some(t => t.toLowerCase() === val.toLowerCase())) { showToast('Ya existe esa etiqueta', 'err'); return; }
       arr.push(val);
       arr.sort((a, b) => a.localeCompare(b, 'es'));
-      const lsKey = type === 'cat' ? 'cats' : (type === 'mec' ? 'mecs' : (type === 'lugar' ? 'lugares' : 'idiomas'));
+      const lsKey = type === 'cat' ? 'cats' : (type === 'mec' ? 'mecs' : (type === 'tema' ? 'temas' : (type === 'lugar' ? 'lugares' : 'idiomas')));
       saveTags(lsKey, arr);
       inp.value = ''; renderTagList(type); buildTagFilters(); rebuildFormSelects();
       if (type === 'lugar') buildLugarSelect(val);
@@ -3962,9 +3996,9 @@
       showToast(`"${val}" añadida ✓`, 'ok');
     }
     function removeTag(type, idx) {
-      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'lugar' ? LUGARES : IDIOMAS));
+      const arr = type === 'cat' ? CATS : (type === 'mec' ? MECS : (type === 'tema' ? TEMAS : (type === 'lugar' ? LUGARES : IDIOMAS)));
       arr.splice(idx, 1);
-      const lsKey = type === 'cat' ? 'cats' : (type === 'mec' ? 'mecs' : (type === 'lugar' ? 'lugares' : 'idiomas'));
+      const lsKey = type === 'cat' ? 'cats' : (type === 'mec' ? 'mecs' : (type === 'tema' ? 'temas' : (type === 'lugar' ? 'lugares' : 'idiomas')));
       saveTags(lsKey, arr);
       renderTagList(type); buildTagFilters(); rebuildFormSelects();
       if (type === 'lugar') buildLugarSelect();
@@ -3990,6 +4024,14 @@
         w.appendChild(s);
       }
     }
+    function buildTemaSelects(sel = []) {
+      const w = document.getElementById('fi-temas-wrap'); w.innerHTML = '';
+      for (let i = 0; i < 2; i++) {
+        const s = document.createElement('select'); s.id = `fi-tema-${i}`;
+        s.innerHTML = `<option value="">— Sin temática —</option>` + TEMAS.map(t => `<option value="${x(t)}"${sel[i] === t ? ' selected' : ''}>${x(t)}</option>`).join('');
+        w.appendChild(s);
+      }
+    }
     function buildLugarSelect(sel = '') {
       const s = document.getElementById('fi-lugar'); if (!s) return;
       s.innerHTML = `<option value="">— Seleccionar lugar —</option>` + LUGARES.map(l => `<option value="${x(l)}"${sel === l ? ' selected' : ''}>${x(l)}</option>`).join('');
@@ -4001,11 +4043,13 @@
     function rebuildFormSelects() {
       const sc = [0, 1].map(i => document.getElementById(`fi-cat-${i}`)?.value || '');
       const sm = [0, 1, 2, 3].map(i => document.getElementById(`fi-mec-${i}`)?.value || '');
+      const sth = [0, 1].map(i => document.getElementById(`fi-tema-${i}`)?.value || '');
       const sl = document.getElementById('fi-lugar')?.value || '';
-      buildCatSelects(sc); buildMecSelects(sm); buildLugarSelect(sl);
+      buildCatSelects(sc); buildMecSelects(sm); buildTemaSelects(sth); buildLugarSelect(sl);
     }
     function getFormCats() { return [0, 1].map(i => document.getElementById(`fi-cat-${i}`)?.value || '').filter(Boolean); }
     function getFormMecs() { return [0, 1, 2, 3].map(i => document.getElementById(`fi-mec-${i}`)?.value || '').filter(Boolean); }
+    function getFormTemas() { return [0, 1].map(i => document.getElementById(`fi-tema-${i}`)?.value || '').filter(Boolean); }
 
     // ═══════════════ FORM MODAL ═══════════════
     function openForm(id) {
@@ -4029,6 +4073,7 @@
       document.getElementById('fi-exp').value = g?.expansion ? 'si' : 'no';
       buildCatSelects(g?.cats || []);
       buildMecSelects(g?.mecs || []);
+      buildTemaSelects(g?.temas || []);
       const isBase64 = g?.img && g.img.startsWith('data:');
       set('fi-img', isBase64 ? '' : g?.img || '');
       const prev = document.getElementById('form-img-preview');
@@ -4088,7 +4133,7 @@
         lugarCompra: document.getElementById('fi-status').value === 'encargado' ? document.getElementById('fi-lugar').value : '',
         idioma: document.getElementById('fi-idioma') ? document.getElementById('fi-idioma').value : 'Castellano',
         notas: document.getElementById('fi-notas') ? document.getElementById('fi-notas').value.trim() : '',
-        cats: getFormCats(), mecs: getFormMecs(),
+        cats: getFormCats(), mecs: getFormMecs(), temas: getFormTemas(),
         lists: getFormLists(),
       };
       // For backwards compatibility when exporting/saving
@@ -4265,7 +4310,7 @@
               year: parseInt(r[7]) || 0, bgg: readBGGCell(ws, rowIdx), img: '',
               caja: String(r[10] || '').trim(), columna: String(r[11] || '').trim(), cajon: '',
               played: readPlayedCell(ws, rowIdx), expansion: isExp, expansionOf: '', expansionOfId: null,
-              autor: '', cats: [], mecs: []
+              autor: '', cats: [], mecs: [], temas: []
             };
           }).filter(g => g.name);
           const nameMap = {}; games.forEach(g => { if (!g.expansion) nameMap[g.name.toLowerCase()] = g; });
@@ -4307,7 +4352,7 @@
       // Save imgPos keyed by game name (IDs change on reimport)
       const imgPosByName = {};
       GAMES.forEach(g => { if (imgPos[g.id]) imgPosByName[g.name] = imgPos[g.id]; });
-      const payload = { version: 3, exportDate: new Date().toISOString(), cats: CATS, mecs: MECS, lists: LISTS, imgPos: imgPosByName, games: GAMES, generalNotes: GENERAL_NOTES };
+      const payload = { version: 3, exportDate: new Date().toISOString(), cats: CATS, mecs: MECS, temas: TEMAS, lists: LISTS, imgPos: imgPosByName, games: GAMES, generalNotes: GENERAL_NOTES };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -4323,6 +4368,7 @@
         if (!incoming.length && !payload.generalNotes) { showToast('El archivo JSON está vacío', 'err'); return; }
         if (payload.cats) { CATS.length = 0; payload.cats.forEach(c => CATS.push(c)); saveTags('cats', CATS); }
         if (payload.mecs) { MECS.length = 0; payload.mecs.forEach(m => MECS.push(m)); saveTags('mecs', MECS); }
+        if (payload.temas) { TEMAS.length = 0; payload.temas.forEach(t => TEMAS.push(t)); saveTags('temas', TEMAS); }
         if (payload.lists) { LISTS = payload.lists; localStorage.setItem('ludo_lists', JSON.stringify(LISTS)); }
         if (payload.generalNotes) { GENERAL_NOTES = payload.generalNotes; saveGeneralNotes(); }
         // Store imgPos by name so doImportJSON can remap after IDs change
@@ -4953,26 +4999,7 @@
         })
       });
 
-      // ── 5. Categoría (pie) ──
-      const catMap = {};
-      dataSet.forEach(g => (g.cats || []).forEach(c => { catMap[c] = (catMap[c] || 0) + 1; }));
-      const catEntries = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
-      destroyChart('ch-cat');
-      CHART_INSTANCES['ch-cat'] = new Chart(document.getElementById('ch-cat'), {
-        type: 'doughnut',
-        data: {
-          labels: catEntries.map(e => e[0]), datasets: [{
-            data: catEntries.map(e => e[1]),
-            backgroundColor: PALETTE.slice(0, catEntries.length), borderColor: '#1a1814', borderWidth: 3
-          }]
-        },
-        options: pieOpts('ch-cat', (idx) => {
-          closeStats(); document.getElementById('f-cat').value = catEntries[idx][0]; render();
-          showToast(`Filtrando: ${catEntries[idx][0]}`, 'ok');
-        })
-      });
-
-      // ── 5b. Idioma (pie) ──
+      // ── 5. Idioma (pie) ──
       const idmEntries = Object.entries(idiomaCount).sort((a, b) => b[1] - a[1]);
       destroyChart('ch-idioma');
       CHART_INSTANCES['ch-idioma'] = new Chart(document.getElementById('ch-idioma'), {
@@ -4987,6 +5014,25 @@
           closeStats(); document.getElementById('f-idioma').value = idmEntries[idx][0]; render();
           showToast(`Filtrando: ${idmEntries[idx][0]}`, 'ok');
         })
+      });
+
+      // ── 5b. Categoría (barras horizontales) ──
+      const catMap = {};
+      dataSet.forEach(g => (g.cats || []).forEach(c => { catMap[c] = (catMap[c] || 0) + 1; }));
+      const catEntries = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+      destroyChart('ch-cat');
+      CHART_INSTANCES['ch-cat'] = new Chart(document.getElementById('ch-cat'), {
+        type: 'bar',
+        data: {
+          labels: catEntries.map(e => e[0]), datasets: [{
+            data: catEntries.map(e => e[1]),
+            backgroundColor: catEntries.map((_, i) => PALETTE[i % PALETTE.length]), borderRadius: 5, borderSkipped: false
+          }]
+        },
+        options: chartOpts('ch-cat', catEntries.map(e => e[0]), (idx) => {
+          closeStats(); document.getElementById('f-cat').value = catEntries[idx][0]; render();
+          showToast(`Filtrando: ${catEntries[idx][0]}`, 'ok');
+        }, { indexAxis: 'y', tall: true })
       });
 
       // ── 6. Mecánica (barras horizontales top 20) ──
@@ -5005,6 +5051,25 @@
         options: chartOpts('ch-mec', mecEntries.map(e => e[0]), (idx) => {
           closeStats(); document.getElementById('f-mec').value = mecEntries[idx][0]; render();
           showToast(`Filtrando: ${mecEntries[idx][0]}`, 'ok');
+        }, { indexAxis: 'y', tall: true })
+      });
+
+      // ── 6b. Temática (barras horizontales top 20) ──
+      const temaMap = {};
+      dataSet.forEach(g => (g.temas || []).forEach(t => { temaMap[t] = (temaMap[t] || 0) + 1; }));
+      const temaEntries = Object.entries(temaMap).sort((a, b) => b[1] - a[1]).slice(0, 20);
+      destroyChart('ch-tema');
+      CHART_INSTANCES['ch-tema'] = new Chart(document.getElementById('ch-tema'), {
+        type: 'bar',
+        data: {
+          labels: temaEntries.map(e => e[0]), datasets: [{
+            data: temaEntries.map(e => e[1]),
+            backgroundColor: CGREEN, borderRadius: 5, borderSkipped: false
+          }]
+        },
+        options: chartOpts('ch-tema', temaEntries.map(e => e[0]), (idx) => {
+          closeStats(); document.getElementById('f-tema').value = temaEntries[idx][0]; render();
+          showToast(`Filtrando: ${temaEntries[idx][0]}`, 'ok');
         }, { indexAxis: 'y', tall: true })
       });
 
@@ -5172,19 +5237,24 @@
         <div class="chart-wrap pie"><canvas id="ch-weight"></canvas></div>
       </div>
       <div class="stats-card">
-        <h3>🏷 Juegos por categoría</h3>
-        <p class="stats-hint">Clic para filtrar</p>
-        <div class="chart-wrap pie"><canvas id="ch-cat"></canvas></div>
-      </div>
-      <div class="stats-card">
         <h3>🗣 Distribución por idioma</h3>
         <p class="stats-hint">Clic para ver detalle</p>
         <div class="chart-wrap pie"><canvas id="ch-idioma"></canvas></div>
       </div>
       <div class="stats-card full">
+        <h3>🏷 Juegos por categoría</h3>
+        <p class="stats-hint">Clic para filtrar</p>
+        <div class="chart-wrap tall"><canvas id="ch-cat"></canvas></div>
+      </div>
+      <div class="stats-card full">
         <h3>⚙️ Juegos por mecánica (top 20)</h3>
         <p class="stats-hint">Clic para filtrar</p>
         <div class="chart-wrap tall"><canvas id="ch-mec"></canvas></div>
+      </div>
+      <div class="stats-card full">
+        <h3>🎭 Juegos por temática (top 20)</h3>
+        <p class="stats-hint">Clic para filtrar</p>
+        <div class="chart-wrap tall"><canvas id="ch-tema"></canvas></div>
       </div>
       <div class="stats-card full">
         <h3>✍️ Juegos por autor (top 20)</h3>
