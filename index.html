@@ -1220,6 +1220,75 @@
       color: #7dcde8
     }
 
+    /* EDICIONES */
+    .ed-sw {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(20, 18, 14, 0.82);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 2px 4px;
+      max-width: 92%;
+      cursor: default
+    }
+
+    .ed-sw button {
+      background: none;
+      border: none;
+      color: var(--gold);
+      font-size: 0.95rem;
+      line-height: 1;
+      padding: 1px 7px;
+      cursor: pointer
+    }
+
+    .ed-sw .ed-n {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--gold);
+      white-space: nowrap
+    }
+
+    .ed-sw .ed-l {
+      font-size: 0.65rem;
+      color: var(--cream-dim);
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .dm-ed-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--gold-faint);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 6px 8px;
+      margin-bottom: 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--gold)
+    }
+
+    .dm-ed-bar button {
+      background: none;
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      color: var(--gold);
+      font-size: 1rem;
+      padding: 2px 12px;
+      cursor: pointer
+    }
+
     .pill.tema {
       background: rgba(76, 175, 125, 0.09);
       border-color: rgba(76, 175, 125, 0.32);
@@ -2603,6 +2672,7 @@
         <div id="dm-exps-wrap"></div>
         <div class="dm-actions">
           <button class="btn primary" onclick="openForm(currentId)">✏️ Editar</button>
+          <button class="btn ghost" id="dm-add-ed" onclick="addEdition(currentId)">➕ Otra edición</button>
           <button class="btn ghost" id="dm-toggle-btn" onclick="togglePlayed()"></button>
           <button class="btn danger" onclick="askDelete()">🗑 Eliminar</button>
           <button class="btn ghost" onclick="closeOv('ov-detail')">Cerrar</button>
@@ -2666,8 +2736,15 @@
           <div class="fg form-full" id="fi-expwrap" style="display:none">
             <label>Juego base *</label>
             <input type="text" id="fi-expbase" placeholder="Escribe el nombre del juego base…" autocomplete="off"
-              oninput="acInput()" onkeydown="acKeydown(event)" onfocus="acInput()" onblur="setTimeout(acClose,200)">
+              oninput="acInput(true)" onkeydown="acKeydown(event)" onfocus="acInput()" onblur="setTimeout(acClose,200)">
             <div class="autocomplete-list" id="ac-list"></div>
+          </div>
+          <div class="fg form-full" id="fi-edwrap">
+            <label>Otra edición de <span style="color:var(--text-dim);font-weight:400">(si ya tienes este juego en otra edición)</span></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <select id="fi-edof" style="flex:2;min-width:180px"></select>
+              <input type="text" id="fi-edlabel" placeholder="Etiqueta: ej. Edición 2019" style="flex:1;min-width:140px">
+            </div>
           </div>
           <div class="fg form-full"><label>Enlace BGG</label><input type="url" id="fi-bgg"
               placeholder="https://boardgamegeek.com/…"></div>
@@ -3324,6 +3401,42 @@
 
     // ═══════════════ HELPERS ═══════════════
     function getExps(id) { return GAMES.filter(g => g.expansion && g.expansionOfId === id); }
+
+    // ═══════════════ EDICIONES ═══════════════
+    // Cada edición es un juego base independiente (cuenta como 1 en todo).
+    // Las que comparten `edGroup` se muestran agrupadas en una sola ficha.
+    let edActive = {}; // edGroup -> id de la edición mostrada (solo en memoria)
+    function getEditions(g) {
+      if (!g || g.expansion || !g.edGroup) return g ? [g] : [];
+      return GAMES.filter(o => !o.expansion && o.edGroup === g.edGroup).sort((a, b) => a.id - b.id);
+    }
+    function groupReps(list) {
+      const seen = new Set(), out = [];
+      for (const g of list) {
+        if (g.expansion || !g.edGroup) { out.push(g); continue; }
+        if (seen.has(g.edGroup)) continue;
+        seen.add(g.edGroup);
+        const act = getEditions(g).find(o => o.id === edActive[g.edGroup]);
+        out.push(act || g);
+      }
+      return out;
+    }
+    function edSwitch(id, dir, ev) {
+      if (ev) ev.stopPropagation();
+      const g = GAMES.find(z => z.id === id); if (!g || !g.edGroup) return;
+      const eds = getEditions(g); if (eds.length < 2) return;
+      const idx = eds.findIndex(o => o.id === id);
+      edActive[g.edGroup] = eds[(idx + dir + eds.length) % eds.length].id;
+      render();
+    }
+    function edSwitchDetail(dir) {
+      const g = GAMES.find(z => z.id === currentId); if (!g || !g.edGroup) return;
+      const eds = getEditions(g); if (eds.length < 2) return;
+      const idx = eds.findIndex(o => o.id === g.id);
+      const next = eds[(idx + dir + eds.length) % eds.length];
+      edActive[g.edGroup] = next.id;
+      render(); openDetail(next.id);
+    }
     function parseBestP(str) {
       if (!str) return [];
       const nums = String(str).match(/\d+/g);
@@ -3503,18 +3616,18 @@
         attachCardPan(); return;
       }
       if (typeF === 'base') {
-        const list = sortGames(filtered.filter(g => !g.expansion));
+        const list = groupReps(sortGames(filtered.filter(g => !g.expansion)));
         if (!list.length) { grid.innerHTML = '<div class="no-results"><span class="ico">🎲</span>Sin juegos base</div>'; return; }
         grid.innerHTML = list.map((g, i) => cardHTML(g, i, false)).join('');
         attachCardPan(); return;
       }
 
       // Default 'all' view with clustering
-      const bases = sortGames(GAMES.filter(g => {
+      const bases = groupReps(sortGames(GAMES.filter(g => {
         if (g.expansion) return false;
         if (matches(g)) return true;
         return getExps(g.id).some(e => matches(e));
-      }));
+      })));
       // Expansiones "huérfanas" (sin vínculo válido a un juego base existente).
       // Si existe otra expansión con el mismo nombre que SÍ está correctamente
       // vinculada (y por tanto ya se muestra anidada bajo su base), se oculta
@@ -3555,6 +3668,10 @@
       const phH = `<div class="cimg-ph" ${g.img ? 'style="display:none"' : ''}>🎲</div>`;
       const exps = (!inCluster && !g.expansion) ? getExps(g.id) : [];
       const badge = exps.length ? `<div class="exp-count-badge">📦 ${exps.length}</div>` : '';
+      const eds = (!g.expansion && g.edGroup) ? getEditions(g) : [];
+      const edSw = eds.length > 1
+        ? `<div class="ed-sw" onclick="event.stopPropagation()"><button title="Edición anterior" onclick="edSwitch(${g.id},-1,event)">‹</button><span class="ed-n">${eds.findIndex(o => o.id === g.id) + 1}/${eds.length}</span>${g.edLabel ? `<span class="ed-l" title="${x(g.edLabel)}">${x(g.edLabel)}</span>` : ''}<button title="Edición siguiente" onclick="edSwitch(${g.id},1,event)">›</button></div>`
+        : '';
       const clipBadge = g.drive ? `<div class="cclip">📎</div>` : '';
       const anim = inCluster ? '' : `style="animation-delay:${Math.min(i, 20) * 0.025}s"`;
       let bggUrl = g.bgg ? g.bgg.trim() : ''; if (bggUrl && !bggUrl.startsWith('http')) bggUrl = 'https://' + bggUrl;
@@ -3568,6 +3685,7 @@
         ${clipBadge}
       </div>
       <div class="cdot ${g.status === 'jugado' ? 'yes' : (g.status === 'encargado' ? 'blue' : (g.status === 'wishlist' ? 'purple' : 'no'))}"></div>
+      ${edSw}
     </div>
     <div class="cbody">
       <div class="cname">${x(g.name || '—')}</div>
@@ -3796,6 +3914,14 @@
         const bImg = base.img ? `<img class="dm-base-link-img" src="${x(base.img)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="dm-base-link-img-ph" style="display:none">🎲</div>` : `<div class="dm-base-link-img-ph">🎲</div>`;
         blw.innerHTML = `<div class="dm-base-link" onclick="openDetail(${base.id})">${bImg}<div class="dm-base-link-info"><span class="dm-base-link-label">Juego base</span><span class="dm-base-link-name">${x(base.name)}</span></div><span style="color:var(--gold)">→</span></div>`;
       } else blw.innerHTML = '';
+      // Barra de ediciones (página 1 / 2 …) para juegos base con varias ediciones
+      const edsD = (!g.expansion && g.edGroup) ? getEditions(g) : [];
+      if (edsD.length > 1) {
+        const ei = edsD.findIndex(o => o.id === g.id);
+        blw.innerHTML = `<div class="dm-ed-bar"><button onclick="edSwitchDetail(-1)" title="Edición anterior">‹</button><span>📖 Edición ${ei + 1} de ${edsD.length}${g.edLabel ? ' · ' + x(g.edLabel) : ''}</span><button onclick="edSwitchDetail(1)" title="Edición siguiente">›</button></div>`;
+      }
+      const addEdBtn = document.getElementById('dm-add-ed');
+      if (addEdBtn) addEdBtn.style.display = g.expansion ? 'none' : '';
 
       document.getElementById('dm-stats').innerHTML = `
     <div class="dm-stat"><span class="sl">Jugadores</span><span class="sv">${g.minP || '—'}${g.maxP && g.maxP !== g.minP ? '–' + g.maxP : ''}</span></div>
@@ -4138,8 +4264,33 @@
       } else { expwrap.style.display = 'none'; set('fi-expbase', ''); }
       set('fi-notas', g?.notas || '');
       buildListsField(g?.lists || []);
+      buildEdSelect(g); set('fi-edlabel', g?.edLabel || '');
+      document.getElementById('fi-edwrap').style.display = g?.expansion ? 'none' : 'block';
+      expBaseId = g?.expansionOfId || null;
       document.getElementById('form-msg').className = 'form-msg';
       acClose(); closeOv('ov-detail'); openOv('ov-form');
+    }
+    function buildEdSelect(g) {
+      const sel = document.getElementById('fi-edof'); if (!sel) return;
+      const opts = GAMES.filter(o => !o.expansion && (!g || o.id !== g.id))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+      let cur = '';
+      if (g && g.edGroup) { const mate = opts.find(o => o.edGroup === g.edGroup); if (mate) cur = String(mate.id); }
+      sel.innerHTML = '<option value="">— Ninguna (juego único) —</option>' + opts.map(o =>
+        `<option value="${o.id}"${String(o.id) === cur ? ' selected' : ''}>${x(o.name)}${o.year ? ' (' + o.year + ')' : ''}${o.edLabel ? ' · ' + x(o.edLabel) : (o.editorial ? ' · ' + x(o.editorial) : '')}</option>`).join('');
+    }
+    // Crea una nueva edición del juego abierto, copiando los datos comunes
+    function addEdition(id) {
+      const s = GAMES.find(z => z.id === id); if (!s || s.expansion) return;
+      openForm(null);
+      const set = (fid, val) => { const e = document.getElementById(fid); if (e) e.value = val ?? ''; };
+      set('fi-name', s.name); set('fi-minp', s.minP || ''); set('fi-maxp', s.maxP || '');
+      set('fi-bestp', s.bestP); set('fi-time', s.timeDisplay);
+      set('fi-weight', s.weight || ''); set('fi-rating', s.rating || '');
+      set('fi-bgg', s.bgg); set('fi-autor', s.autor || '');
+      buildCatSelects(s.cats || []); buildMecSelects(s.mecs || []); buildTemaSelects(s.temas || []);
+      set('fi-edof', String(s.id));
+      document.getElementById('fm-title').textContent = 'Añadir otra edición';
     }
     function onStatusChange() {
       const s = document.getElementById('fi-status').value;
@@ -4148,7 +4299,8 @@
     function onExpToggle() {
       const isExp = document.getElementById('fi-exp').value === 'si';
       document.getElementById('fi-expwrap').style.display = isExp ? 'block' : 'none';
-      if (!isExp) { document.getElementById('fi-expbase').value = ''; acClose(); }
+      if (!isExp) { document.getElementById('fi-expbase').value = ''; expBaseId = null; acClose(); }
+      const edw = document.getElementById('fi-edwrap'); if (edw) edw.style.display = isExp ? 'none' : 'block';
     }
     async function saveGame() {
       const name = document.getElementById('fi-name').value.trim();
@@ -4156,7 +4308,22 @@
       const isExp = document.getElementById('fi-exp').value === 'si';
       const expbaseName = document.getElementById('fi-expbase').value.trim();
       let expansionOfId = null, expansionOf = '';
-      if (isExp && expbaseName) { expansionOf = expbaseName; const base = GAMES.find(g => !g.expansion && g.name.toLowerCase() === expbaseName.toLowerCase()); if (base) expansionOfId = base.id; }
+      if (isExp && expbaseName) {
+        expansionOf = expbaseName;
+        // Preferir la edición exacta elegida en el autocompletado (varias ediciones pueden compartir nombre)
+        let base = expBaseId ? GAMES.find(b => b.id === expBaseId && !b.expansion) : null;
+        if (base && base.name.toLowerCase() !== expbaseName.toLowerCase()) base = null;
+        if (!base) base = GAMES.find(g => !g.expansion && g.name.toLowerCase() === expbaseName.toLowerCase());
+        if (base) expansionOfId = base.id;
+      }
+      // Edición: vincular con otro juego (mismo grupo)
+      let edGroup = null, mateToSave = null;
+      const edOfVal = document.getElementById('fi-edof').value;
+      if (!isExp && edOfVal) {
+        const mate = GAMES.find(o => o.id === parseInt(edOfVal));
+        if (mate) { edGroup = mate.edGroup || ('ed' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); if (!mate.edGroup) { mate.edGroup = edGroup; mateToSave = mate; } }
+      }
+      const edLabel = document.getElementById('fi-edlabel').value.trim();
       const tr = document.getElementById('fi-time').value.trim();
       const tp = tr.replace(/\s/g, '').split(/[-–a]/).map(v => parseInt(v)).filter(v => !isNaN(v));
       const existingImg = editingId ? GAMES.find(z => z.id === editingId)?.img || '' : '';
@@ -4188,10 +4355,14 @@
         cats: getFormCats(), mecs: getFormMecs(), temas: getFormTemas(),
         lists: getFormLists(),
       };
+      if (edGroup) g.edGroup = edGroup;
+      if (edLabel && !isExp) g.edLabel = edLabel;
       // For backwards compatibility when exporting/saving
       g.played = g.status === 'jugado';
       if (editingId) g.id = editingId;
       const savedId = await dbPut(g); if (!g.id) g.id = savedId;
+      if (mateToSave) await dbPut(mateToSave);
+      if (g.edGroup && !editingId) edActive[g.edGroup] = g.id; // mostrar la edición recién añadida
       if (editingId) { const idx = GAMES.findIndex(z => z.id === editingId); if (idx >= 0) GAMES[idx] = g; else GAMES.push(g); }
       else GAMES.push(g);
       buildYears(); buildAutorFilter(); buildTagFilters(); updateStats(); render();
@@ -4201,8 +4372,9 @@
     }
 
     // ═══════════════ AUTOCOMPLETE ═══════════════
-    let acIdx = -1;
-    function acInput() {
+    let acIdx = -1, expBaseId = null;
+    function acInput(typing) {
+      if (typing) expBaseId = null;
       const q = document.getElementById('fi-expbase').value.toLowerCase().trim();
       const list = document.getElementById('ac-list'); acIdx = -1;
       if (!q) { acClose(); return; }
@@ -4211,7 +4383,10 @@
       list.innerHTML = ms.map((g, i) => {
         const imgH = g.img ? `<img src="${x(g.img)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="ac-item-ph" style="display:none">🎲</div>` : `<div class="ac-item-ph">🎲</div>`;
         const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-        return `<div class="ac-item" data-name="${x(g.name)}" onmousedown="acSel(${i})">${imgH}<span>${x(g.name).replace(re, '<mark>$1</mark>')}</span></div>`;
+        // Si hay varias ediciones con el mismo nombre, mostrar año/editorial para distinguirlas
+        const dup = GAMES.some(o => o.id !== g.id && !o.expansion && (o.name || '').toLowerCase() === (g.name || '').toLowerCase());
+        const hint = dup ? ` <small style="color:var(--text-dim)">${x([g.edLabel, g.year, g.editorial].filter(Boolean).join(' · '))}</small>` : '';
+        return `<div class="ac-item" data-name="${x(g.name)}" data-id="${g.id}" onmousedown="acSel(${i})">${imgH}<span>${x(g.name).replace(re, '<mark>$1</mark>')}${hint}</span></div>`;
       }).join('');
       list.className = 'autocomplete-list open';
     }
@@ -4224,7 +4399,7 @@
       items.forEach((el, i) => el.classList.toggle('active', i === acIdx));
       if (acIdx >= 0) items[acIdx].scrollIntoView({ block: 'nearest' });
     }
-    function acSel(i) { const items = document.getElementById('ac-list').querySelectorAll('.ac-item'); if (items[i]) document.getElementById('fi-expbase').value = items[i].dataset.name; acClose(); }
+    function acSel(i) { const items = document.getElementById('ac-list').querySelectorAll('.ac-item'); if (items[i]) { document.getElementById('fi-expbase').value = items[i].dataset.name; expBaseId = parseInt(items[i].dataset.id) || null; } acClose(); }
     function acClose() { const l = document.getElementById('ac-list'); if (l) { l.className = 'autocomplete-list'; l.innerHTML = ''; } acIdx = -1; }
 
     // ═══════════════ AUTOR AUTOCOMPLETE ═══════════════
@@ -4445,13 +4620,15 @@
       if (!merge) {
         await dbClear();
         await dbBulk(incoming.map(g => { const c = { ...g }; delete c.id; return c; }));
-        GAMES = await dbAll(); await relinkExpansions();
+        GAMES = await dbAll(); await remapImportedLinks(incoming, GAMES); await relinkExpansions();
       } else {
-        const existing = new Set(GAMES.map(g => g.name.toLowerCase()));
-        const toAdd = incoming.filter(g => !existing.has((g.name || '').toLowerCase()));
+        // Dos ediciones del mismo juego comparten nombre: si alguno está agrupado, se distinguen por año + editorial
+        const isDup = (g, o) => (g.name || '').toLowerCase() === (o.name || '').toLowerCase() &&
+          ((g.edGroup || o.edGroup) ? ((g.year || 0) === (o.year || 0) && (g.editorial || '').toLowerCase() === (o.editorial || '').toLowerCase()) : true);
+        const toAdd = incoming.filter(g => !GAMES.some(o => isDup(g, o)));
         if (!toAdd.length) { showToast('No hay juegos nuevos para fusionar', 'err'); return; }
         await dbBulk(toAdd.map(g => { const c = { ...g }; delete c.id; return c; }));
-        GAMES = await dbAll(); await relinkExpansions();
+        GAMES = await dbAll(); await remapImportedLinks(toAdd, GAMES.slice(-toAdd.length)); await relinkExpansions();
         _remapImgPosByName();
         showToast(`${toAdd.length} juegos fusionados ✓`, 'ok');
         buildYears(); buildAutorFilter(); buildTagFilters(); updateStats(); render(); return;
@@ -4472,6 +4649,19 @@
       });
       _saveImgPos();
       window._pendingImgPosByName = null;
+    }
+    // Los ids se reasignan al importar: reconecta cada expansión con la edición exacta de su juego base
+    // (src[i] ↔ added[i]: se insertan en el mismo orden). Si su base no viene en la importación,
+    // se anula el vínculo para que relinkExpansions lo resuelva por nombre.
+    async function remapImportedLinks(src, added) {
+      const idMap = new Map();
+      src.forEach((s, i) => { if (s.id != null && added[i]) idMap.set(s.id, added[i].id); });
+      for (let i = 0; i < added.length; i++) {
+        const s = src[i], a = added[i];
+        if (!a || !a.expansion || s.expansionOfId == null) continue;
+        const nid = idMap.has(s.expansionOfId) ? idMap.get(s.expansionOfId) : null;
+        if (a.expansionOfId !== nid) { a.expansionOfId = nid; await dbPut(a); }
+      }
     }
     async function relinkExpansions() {
       const nameToId = {}; GAMES.forEach(g => { if (!g.expansion) nameToId[g.name.toLowerCase()] = g.id; });
